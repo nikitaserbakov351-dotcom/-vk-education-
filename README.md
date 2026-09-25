@@ -4,6 +4,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?logo=fastapi&logoColor=white)
 ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0%20async-D71F00)
 ![WebSockets](https://img.shields.io/badge/WebSockets-realtime-4A154B)
+![Tests](https://github.com/nikitaserbakov351-dotcom/-vk-education-/actions/workflows/tests.yml/badge.svg)
 
 Учебный проект, выполненный в рамках образовательной программы VK: веб-мессенджер с доставкой сообщений в реальном времени, JWT-авторизацией WebSocket-соединений и хранением истории в асинхронной базе данных.
 
@@ -13,7 +14,8 @@
 - **JWT-авторизация WebSocket** — соединение устанавливается только с одноразовым токеном, полученным через REST-эндпоинт `/login`; недействительный токен отклоняется с кодом 1008.
 - **История сообщений** — вся переписка сохраняется в SQLite и отдаётся новым участникам при входе.
 - **Адаптивный интерфейс** — Tailwind CSS, эффект glassmorphism, ванильный JS без фреймворков.
-- **Автозапуск в один клик** — при старте сервер сам поднимается на порту 8080 и открывает интерфейс в браузере.
+- **Автотесты и CI** — pytest-покрытие REST-эндпоинтов, JWT-авторизации и WebSocket-канала (включая отклонение недействительных токенов); GitHub Actions запускается на каждый push.
+- **Автозапуск в один клик** — при ручном запуске сервер поднимается на порту 8080 и сам открывает интерфейс в браузере.
 
 ## Технологический стек
 
@@ -37,6 +39,13 @@ pip install -r requirements.txt
 python main.py                   # сервер: http://127.0.0.1:8080
 ```
 
+Для запуска тестов:
+
+```bash
+pip install -r requirements-dev.txt
+pytest -v
+```
+
 Опционально задайте переменную окружения `SECRET_KEY` — ключ подписи JWT. По умолчанию используется development-значение.
 
 ## Особенности реализации
@@ -50,12 +59,15 @@ python main.py                   # сервер: http://127.0.0.1:8080
 ## Структура проекта
 
 ```
-├── main.py           # маршруты REST/WebSocket, lifespan, точка входа
-├── database.py       # async-движок и фабрика сессий SQLAlchemy
-├── models.py         # ORM-модели: User, Message
-├── ws_manager.py     # менеджер WebSocket-соединений и рассылки
-├── index.html        # одностраничный интерфейс мессенджера
-└── requirements.txt  # зависимости
+├── main.py                    # маршруты REST/WebSocket, lifespan, точка входа
+├── database.py                # async-движок и фабрика сессий SQLAlchemy
+├── models.py                  # ORM-модели: User, Message
+├── ws_manager.py              # менеджер WebSocket-соединений и рассылки
+├── index.html                 # одностраничный интерфейс мессенджера
+├── conftest.py                # тестовая конфигурация (БД, ключ подписи)
+├── test_messenger.py          # pytest: REST, JWT, WebSocket
+├── .github/workflows/tests.yml
+└── requirements.txt           # зависимости (+ requirements-dev.txt для тестов)
 ```
 
 ## Развитие проекта

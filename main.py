@@ -23,13 +23,6 @@ SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-secret-key-change-me-0123456789")
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
-    # Автоматически открываем браузер
-    def open_browser():
-        time.sleep(1.5)
-        webbrowser.open("http://127.0.0.1:8080")
-
-    threading.Thread(target=open_browser).start()
     yield
 
 
@@ -118,4 +111,10 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...), db: 
 
 # Этот блок позволяет запускать сервер прямо из PyCharm кнопкой Play
 if __name__ == "__main__":
+    # Автоматически открываем браузер после подъёма сервера
+    def open_browser():
+        time.sleep(1.5)
+        webbrowser.open("http://127.0.0.1:8080")
+
+    threading.Thread(target=open_browser, daemon=True).start()
     uvicorn.run("main:app", host="127.0.0.1", port=8080, reload=False)
