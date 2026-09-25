@@ -1,20 +1,39 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect, Query, HTTPException
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 import jwt
+import os
 import webbrowser
 import threading
 import time
 import uvicorn
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from database import engine, Base, get_db
 from models import User, Message
 from ws_manager import manager
 
-app = FastAPI(title="Web Messenger MVP")
-SECRET_KEY = "super_secret_key"
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-secret-key-change-me-0123456789")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    # Автоматически открываем браузер
+    def open_browser():
+        time.sleep(1.5)
+        webbrowser.open("http://127.0.0.1:8080")
+
+    threading.Thread(target=open_browser).start()
+    yield
+
+
+app = FastAPI(title="Web Messenger MVP", lifespan=lifespan)
 
 
 @app.get("/")
@@ -25,19 +44,6 @@ async def get_frontend():
             return HTMLResponse(f.read())
     except FileNotFoundError:
         return HTMLResponse("<h1>Ошибка: файл index.html не найден!</h1>")
-
-
-@app.on_event("startup")
-async def startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-    # Автоматически открываем браузер
-    def open_browser():
-        time.sleep(1.5)
-        webbrowser.open("http://127.0.0.1:8080")
-
-    threading.Thread(target=open_browser).start()
 
 
 @app.post("/register")
@@ -58,7 +64,7 @@ async def login(username: str, db: AsyncSession = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="Не найден")
 
-    exp = datetime.utcnow() + timedelta(minutes=5)
+    exp = datetime.now(timezone.utc) + timedelta(minutes=5)
     token = jwt.encode({"sub": str(user.id), "name": user.username, "exp": exp}, SECRET_KEY, algorithm="HS256")
     return {"ws_token": token}
 
@@ -86,7 +92,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...), db: 
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
         user_id = payload.get("sub")
         username = payload.get("name")
-    except:
+    except jwt.PyJWTError:
         await websocket.close(code=1008)
         return
 
